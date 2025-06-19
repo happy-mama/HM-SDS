@@ -1,0 +1,11 @@
+{
+  "name": "hm-sds",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node ."
+  },
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
