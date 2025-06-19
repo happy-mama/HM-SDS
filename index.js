@@ -144,7 +144,7 @@ CM.add("help", "Get list of all commands", (params) => {
 
 CM.add("pas", "Set password for current session", (params) => {
   return new Promise((resolve) => {
-    readline.question(FgMagenta + pointer + Hidden, (pass) => {
+    readline.question(FgMagenta + pointer, (pass) => {
       readline.output.write = originalWrite;
 
       if (!pass) {
@@ -152,24 +152,33 @@ CM.add("pas", "Set password for current session", (params) => {
         return resolve();
       }
 
-      let dataTxt = fs.readFileSync("./data.txt", { encoding: "utf-8" });
+      fs.promises
+        .readFile("data.txt", { encoding: "utf-8" })
+        .then((file) => {
+          if (file.length) {
+            const tempData = decrypt(file, pass);
 
-      if (dataTxt) {
-        const tempData = decrypt(dataTxt, pass);
+            if (tempData == "Wrong password") {
+              console.log(FgRed + tempData + Reset);
+              return resolve();
+            }
 
-        if (tempData == "Wrong password") {
-          console.log(Reset + FgRed + tempData + Reset);
-          return resolve();
-        }
+            data = JSON.parse(tempData);
+          }
 
-        data = JSON.parse(tempData);
-      }
+          password = pass;
+          pointer = "+> ";
 
-      password = pass;
-      pointer = "+> ";
+          console.log(FgGreen + "Success" + Reset);
+          resolve();
+        })
+        .catch(() => {
+          password = pass;
+          pointer = "+> ";
 
-      console.log(Reset + FgGreen + "Success" + Reset);
-      resolve();
+          console.log(FgGreen + "Success" + Reset);
+          resolve();
+        });
     });
 
     const originalWrite = readline.output.write;
