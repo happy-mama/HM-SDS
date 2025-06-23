@@ -1,6 +1,17 @@
 const crypto = require("crypto");
 const fs = require("fs");
 
+//  ___      ___     ____        ___
+// /\  \    /\  \   /\   '.     /   \
+// \ \  \   \ \  \  \ \     '._/     \
+//  \ \  \___\_\  \  \ \  \.      /\  \             ______   _____    ______
+//   \ \   ______  \  \ \  \ '.__/\ \  \           |  ____| |  __ \  |  ____|
+//    \ \  \____ \  \  \ \  \'._/  \ \  \    ____  | |____  | |  \ \ | |____
+//     \ \  \   \ \  \  \ \  \      \ \  \  |____| |____  | | |  | | |____  |
+//      \ \__\   \ \__\  \ \__\      \ \__\         ____| | | |__/ /  ____| |
+//       \/__/    \/__/   \/__/       \/__/        |______| |_____/  |______|
+//
+
 // COLORS
 
 const Reset = "\x1b[0m";
@@ -17,30 +28,40 @@ const FgCyan = "\x1b[36m";
 const FgWhite = "\x1b[37m";
 const FgGray = "\x1b[90m";
 
-// VARIABLES
+// #region VARIABLES
 
 let password = "";
 let data = {};
-let NO_PASSWORD_REQUIRED_COMMANDS = ["help", "pas", "exit", "clear"];
+const NO_PASSWORD_REQUIRED_COMMANDS = ["help", "pas", "exit", "clear"];
 let pointer = "-> ";
 
-// READLINE
+//#region READLINE
 
 const readline = require("readline").createInterface({
   input: process.stdin,
   output: process.stdout,
 });
 
-// CLASSES
+//#region CLASSES
 
 class CommandsManager {
+  /**
+   * @type {{[key: string]: Command}}
+   */
   commands = {};
 
   constructor() {}
 
-  add(name, description, callback) {
+  /**
+   * @param {Command & {callback: (params: string, flags: string[]) => void}}
+   */
+  add({ name, description, callback }) {
     this.commands[name] = new Command(name, description, callback);
   }
+  /**
+   * @param {string} name
+   * @param {string[]} params
+   */
   envoke(name, params) {
     return new Promise(async (result) => {
       if (this.commands[name]) {
@@ -60,16 +81,30 @@ class CommandsManager {
 
 class Command {
   name = "";
-  description = "";
 
-  constructor(name, description, code) {
+  /**
+   * @type {{main: string, params: string[][], args: string[][]}}
+   */
+  description = {
+    main: "",
+    params: [],
+    args: [],
+  };
+
+  /**
+   * @param {string} params
+   * @param {string[]} flags
+   */
+  run = (params, flags) => {};
+
+  constructor(name, description, callback) {
     this.name = name;
-    this.run = code;
     this.description = description;
+    this.run = callback;
   }
 }
 
-// FUNCTIONS
+//#region FUNCTIONS
 
 const initMessage = () => {
   console.log(Bright + FgYellow + 'HM-SDS tool. Type "help" to get avaliable commands' + Reset);
@@ -99,7 +134,7 @@ const getDirData = () => {
  */
 function encrypt(text, password) {
   const key = crypto.createHash("sha256").update(password).digest();
-  const iv = crypto.randomBytes(16); // 16 байт IV
+  const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
   const encrypted = Buffer.concat([cipher.update(text, "utf8"), cipher.final()]);
   return iv.toString("hex") + ":" + encrypted.toString("hex");
@@ -124,169 +159,272 @@ function decrypt(encrypted, password) {
   }
 }
 
-// COMMANDS
+//#region COMMANDS
 
 const CM = new CommandsManager();
 
-CM.add("help", "Get list of all commands", (params) => {
-  let result = "";
-  let keys = Object.keys(CM.commands);
+CM.add({
+  name: "help",
+  description: {
+    main: "Get list of all commands",
+    params: [],
+    args: [],
+  },
+  callback: (params) => {
+    let result = "";
+    let keys = Object.keys(CM.commands);
 
-  keys.forEach((key, i) => {
-    result += `${FgGreen}${key}${Reset} - ${CM.commands[key].description}`;
-    if (i < keys.length - 1) {
-      result += "\n";
-    }
-  });
+    keys.forEach((key, i) => {
+      const command = CM.commands[key];
 
-  console.log(result);
-});
+      const params = command.description.params.reduce(
+        (acc, cur) => acc + `\n  ${FgCyan}<${cur[0]}>${Reset} ${cur[1]}`,
+        ""
+      );
 
-CM.add("pas", "Set password for current session", (params) => {
-  return new Promise((resolve) => {
-    readline.question(FgMagenta + pointer, (pass) => {
-      readline.output.write = originalWrite;
+      const args = command.description.args.reduce(
+        (acc, cur) => acc + `\n  ${FgMagenta}${cur[0]}${Reset} ${cur[1]}`,
+        ""
+      );
 
-      if (!pass) {
-        console.log(FgRed + "Wrong arg <password>" + Reset);
-        return resolve();
+      result += `${FgGreen}${key}${Reset}` + `\n  ${command.description.main}` + params + args;
+
+      if (i < keys.length - 1) {
+        result += "\n";
       }
-
-      fs.promises
-        .readFile("data.txt", { encoding: "utf-8" })
-        .then((file) => {
-          if (file.length) {
-            const tempData = decrypt(file, pass);
-
-            if (tempData == "Wrong password") {
-              console.log(FgRed + tempData + Reset);
-              return resolve();
-            }
-
-            data = JSON.parse(tempData);
-          }
-
-          password = pass;
-          pointer = "+> ";
-
-          console.log(FgGreen + "Success" + Reset);
-          resolve();
-        })
-        .catch(() => {
-          password = pass;
-          pointer = "+> ";
-
-          console.log(FgGreen + "Success" + Reset);
-          resolve();
-        });
     });
 
-    const originalWrite = readline.output.write;
-    readline.output.write = function () {};
-  });
+    console.log(result);
+  },
 });
 
-CM.add("enc", "enc <key> <string> | Encrypt string to data.json", (params) => {
-  let key = params[0];
-  let message = params.slice(1).join(" ").replaceAll("\\n", "\n");
+CM.add({
+  name: "pas",
+  description: {
+    main: "Set password for current session",
+    params: [],
+    args: [],
+  },
+  callback: (params) => {
+    return new Promise((resolve) => {
+      readline.question(FgMagenta + pointer, (pass) => {
+        readline.output.write = originalWrite;
 
-  data[key] = encrypt(message, password);
-  saveData();
+        if (!pass) {
+          console.log(FgRed + "Wrong arg <password>" + Reset);
+          return resolve();
+        }
 
-  console.log(FgGreen + "Success" + Reset);
+        fs.promises
+          .readFile("data.txt", { encoding: "utf-8" })
+          .then((file) => {
+            if (file.length) {
+              const tempData = decrypt(file, pass);
+
+              if (tempData == "Wrong password") {
+                console.log(FgRed + tempData + Reset);
+                return resolve();
+              }
+
+              data = JSON.parse(tempData);
+            }
+
+            password = pass;
+            pointer = "+> ";
+
+            console.log(FgGreen + "Success" + Reset);
+            resolve();
+          })
+          .catch(() => {
+            password = pass;
+            pointer = "+> ";
+
+            console.log(FgGreen + "Success" + Reset);
+            resolve();
+          });
+      });
+
+      const originalWrite = readline.output.write;
+      readline.output.write = function () {};
+    });
+  },
 });
 
-CM.add("dec", "dec <key> | Decrypt key from data.json", (params) => {
-  let key = params[0];
+CM.add({
+  name: "enc",
+  description: {
+    main: "Encrypts any value to data.txt",
+    params: [
+      ["key", "KEY of value"],
+      ["data+", "any value"],
+    ],
+    args: [],
+  },
+  callback: (params) => {
+    let key = params[0];
+    let message = params.slice(1).join(" ").replaceAll("\\n", "\n");
 
-  if (!key) {
-    return console.log(FgRed + "Wrong arg <key>" + Reset);
-  }
+    data[key] = encrypt(message, password);
 
-  if (!data[key]) {
-    return console.log(FgRed + "No such key in data.json" + Reset);
-  }
+    console.log(data[key]);
 
-  console.log(decrypt(data[key], password));
+    saveData();
+
+    console.log(FgGreen + "Success" + Reset);
+  },
 });
 
-CM.add("decall", 'Decrypt all keys from data.json and save output to "rawAll.json"', (params) => {
-  result = {};
+CM.add({
+  name: "dec",
+  description: {
+    main: "Decrypts key from data.txt",
+    params: [["key", "KEY of value"]],
+    args: [],
+  },
+  callback: (params) => {
+    let key = params[0];
 
-  Object.keys(data).forEach((key) => {
-    result[key] = decrypt(data[key], password);
-  });
-
-  fs.writeFileSync(__dirname + "/rawAll.json", JSON.stringify(result, {}, 2));
-
-  console.log(FgGreen + 'Succesfuly decrypted all data to "rawAll.json"' + Reset);
-});
-
-CM.add("encall", 'Encrypt all data from "rawAll.json" to data.json', (params) => {
-  const dirData = getDirData();
-
-  if (!dirData.includes("rawAll.json")) {
-    return console.log(FgRed + '"rawAll.json" not found' + Reset);
-  }
-
-  let rawData = JSON.parse(fs.readFileSync(__dirname + "/rawAll.json", "utf8"));
-
-  Object.keys(rawData).forEach((key) => {
-    data[key] = encrypt(rawData[key], password);
-  });
-
-  saveData();
-
-  console.log(FgGreen + "Success" + Reset);
-});
-
-CM.add("del", "del <key> | Delete key", (params) => {
-  const key = params[0];
-
-  if (!key) {
-    return console.log(FgRed + "Wrong arg <key>" + Reset);
-  }
-
-  delete data[key];
-  saveData();
-
-  console.log(FgGreen + "Success" + Reset);
-});
-
-CM.add("list", "list <search?> <-e> | Show key list, -e dencrypts values", (params, flags) => {
-  const keys = Object.keys(data);
-  let result = "";
-
-  if (params[0]) {
-    const filteredKeys = keys.filter((key) => key.toLowerCase().includes(params[0]));
-
-    if (flags.includes("-e")) {
-      result = filteredKeys.map((key) => `${key}: ${decrypt(data[key], password)}`).join("\n");
-    } else {
-      result = filteredKeys.join("\n");
+    if (!key) {
+      return console.log(FgRed + "Wrong arg <key>" + Reset);
     }
-  } else {
-    if (flags.includes("-e")) {
-      result = keys.map((key) => `${key}: ${decrypt(data[key], password)}\n`).join("\n");
-    } else {
-      result = keys.join("\n");
+
+    if (!data[key]) {
+      return console.log(FgRed + "No such key in data.json" + Reset);
     }
-  }
 
-  if (!result) {
-    return console.log(FgRed + "Nothing found" + Reset);
-  }
-
-  console.log(result);
+    console.log(decrypt(data[key], password));
+  },
 });
 
-CM.add("clear", "Clear console", () => {
-  console.clear();
-  initMessage();
+CM.add({
+  name: "decall",
+  description: {
+    main: 'Decrypt all keys from data.txt and save output to "rawAll.json"',
+    params: [],
+    args: [],
+  },
+  callback: (params) => {
+    result = {};
+
+    Object.keys(data).forEach((key) => {
+      result[key] = decrypt(data[key], password);
+    });
+
+    fs.writeFileSync(__dirname + "/rawAll.json", JSON.stringify(result, {}, 2));
+
+    console.log(FgGreen + 'Succesfuly decrypted all data to "rawAll.json"' + Reset);
+  },
 });
 
-CM.add("exit", "Exit programm", () => {
-  process.exit(1);
+CM.add({
+  name: "encall",
+  description: {
+    main: 'Encrypt all data from "rawAll.json" to data.txt',
+    params: [],
+    args: [["-s", "Will not delete rawAll.json"]],
+  },
+  callback: (params, flags) => {
+    const dirData = getDirData();
+
+    if (!dirData.includes("rawAll.json")) {
+      return console.log(FgRed + '"rawAll.json" not found' + Reset);
+    }
+
+    let rawData = JSON.parse(fs.readFileSync(__dirname + "/rawAll.json", "utf8"));
+
+    Object.keys(rawData).forEach((key) => {
+      data[key] = encrypt(rawData[key], password);
+    });
+
+    if (!flags.includes("-s")) {
+      fs.rmSync(__dirname + "/rawAll.json");
+    }
+
+    saveData();
+
+    console.log(FgGreen + "Succesfuly encrypted all data" + Reset);
+  },
+});
+
+CM.add({
+  name: "del",
+  description: {
+    main: "Delete key and value",
+    params: [["key", "KEY of value"]],
+    args: [],
+  },
+  callback: (params) => {
+    const key = params[0];
+
+    if (!key) {
+      return console.log(FgRed + "Wrong arg <key>" + Reset);
+    }
+
+    delete data[key];
+    saveData();
+
+    console.log(FgGreen + "Success" + Reset);
+  },
+});
+
+CM.add({
+  name: "list",
+  description: {
+    main: "Show key list",
+    params: [["search", "KEY name"]],
+    args: [["-e", "encrypts value"]],
+  },
+  callback: (params, flags) => {
+    const keys = Object.keys(data);
+    let result = "";
+
+    if (params[0]) {
+      const filteredKeys = keys.filter((key) => key.toLowerCase().includes(params[0]));
+
+      if (flags.includes("-e")) {
+        result = filteredKeys.map((key) => `${key}: ${decrypt(data[key], password)}`).join("\n");
+      } else {
+        result = filteredKeys.join("\n");
+      }
+    } else {
+      if (flags.includes("-e")) {
+        result = keys.map((key) => `${key}: ${decrypt(data[key], password)}\n`).join("\n");
+      } else {
+        result = keys.join("\n");
+      }
+    }
+
+    if (!result) {
+      return console.log(FgRed + "Nothing found" + Reset);
+    }
+
+    console.log(result);
+  },
+});
+
+CM.add({
+  name: "clear",
+  description: {
+    main: "Clear console",
+    params: [],
+    args: [],
+  },
+  callback: () => {
+    console.clear();
+    initMessage();
+  },
+});
+
+CM.add({
+  name: "exit",
+  description: {
+    main: "Exit programm",
+    params: [],
+    args: [],
+  },
+  callback: () => {
+    process.exit(1);
+  },
 });
 
 const loop = () => {
