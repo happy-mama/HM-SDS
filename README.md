@@ -1,4 +1,4 @@
-# HM-SDS - Sequre Data Storage tool
+# HM-SDS - Secure Data Storage tool
 
 Stores JSON in encrypted txt file.
 
@@ -13,19 +13,4 @@ Type "help" to see how to use the commands.
 - dec test
 - => logs string above
 
-# features
-
-### encall and decall
-
-allows you to edit passwords in editor
-
-- encall: parsing rawAll.json and encrypts all data
-- decall: decrypts all your data to rawAll.json
-
-### pas
-
-works like `sudo` in linux (hides input)
-
-### list <search?> <-e>
-
-searches for keys, `-e` flag auto decrypts it
+<img src="https://github.com/happy-mama/HM-SDS/blob/main/image.png?raw=true" />
