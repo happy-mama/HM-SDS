@@ -64,12 +64,16 @@ class CommandsManager {
    */
   envoke(name, params) {
     return new Promise(async (result) => {
-      if (this.commands[name]) {
+      const command = this.commands[name];
+
+      if (command) {
         if (!NO_PASSWORD_REQUIRED_COMMANDS.includes(name) && !passCheck()) return result();
+
+        if (!paramsCheck(command, params)) return result();
 
         const flags = params.filter((param) => param.startsWith("-"));
 
-        await this.commands[name].run(params, flags);
+        await command.run(params, flags);
       } else {
         console.log("No command");
       }
@@ -113,6 +117,33 @@ const initMessage = () => {
 const passCheck = () => {
   if (!password) {
     console.log(FgRed + 'Enter password before performing operation, type "pas"' + Reset);
+    return false;
+  }
+
+  return true;
+};
+
+/**
+ *
+ * @param {Command} command
+ * @param {string[]} params
+ */
+const paramsCheck = (command, params) => {
+  const requiredParams = command.description.params.filter((param) => !param[0].startsWith("?"));
+
+  if (requiredParams.length > params.length) {
+    const missingParam = command.description.params[params.length];
+
+    console.log(
+      FgRed +
+        "missing param" +
+        Reset +
+        FgCyan +
+        ` <${missingParam[0]}> ` +
+        Reset +
+        `${missingParam[1]}`
+    );
+
     return false;
   }
 
@@ -210,10 +241,7 @@ CM.add({
       readline.question(FgMagenta + pointer, (pass) => {
         readline.output.write = originalWrite;
 
-        if (!pass) {
-          console.log(FgRed + "Wrong arg <password>" + Reset);
-          return resolve();
-        }
+        readline.history.shift();
 
         fs.promises
           .readFile("data.txt", { encoding: "utf-8" })
@@ -266,7 +294,33 @@ CM.add({
 
     data[key] = encrypt(message, password);
 
-    console.log(data[key]);
+    saveData();
+
+    console.log(FgGreen + "Success" + Reset);
+  },
+});
+
+CM.add({
+  name: "enct",
+  description: {
+    main: 'works like "enc" but with template',
+    params: [
+      ["key", "KEY of value"],
+      ["login", "any value"],
+      ["pas", "any value"],
+      ["?info+", "any value"],
+    ],
+    args: [],
+  },
+  callback: (params) => {
+    const key = params[0];
+    const login = params[1];
+    const pas = params[2];
+    const info = params.slice(3).join(" ").replaceAll("\\n", "\n");
+
+    const value = `${login}  =  ${pas}` + (info ? `\n ${info}` : "");
+
+    data[key] = encrypt(value, password);
 
     saveData();
 
@@ -283,10 +337,6 @@ CM.add({
   },
   callback: (params) => {
     let key = params[0];
-
-    if (!key) {
-      return console.log(FgRed + "Wrong arg <key>" + Reset);
-    }
 
     if (!data[key]) {
       return console.log(FgRed + "No such key in data.json" + Reset);
@@ -356,8 +406,8 @@ CM.add({
   callback: (params) => {
     const key = params[0];
 
-    if (!key) {
-      return console.log(FgRed + "Wrong arg <key>" + Reset);
+    if (!data[key]) {
+      return console.log(FgRed + "No such key in data.json" + Reset);
     }
 
     delete data[key];
@@ -371,7 +421,7 @@ CM.add({
   name: "list",
   description: {
     main: "Show key list",
-    params: [["search", "KEY name"]],
+    params: [["?search", "KEY name"]],
     args: [["-e", "encrypts value"]],
   },
   callback: (params, flags) => {
@@ -430,7 +480,10 @@ CM.add({
 const loop = () => {
   readline.question(FgCyan + pointer + Reset, (input) => {
     let name = input.split(" ")[0];
-    let params = input.split(" ").slice(1);
+    let params = input
+      .split(" ")
+      .slice(1)
+      .filter((param) => !!param);
 
     CM.envoke(name, params).then(() => {
       loop();
