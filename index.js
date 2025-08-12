@@ -34,6 +34,11 @@ let password = "";
 let data = {};
 const NO_PASSWORD_REQUIRED_COMMANDS = ["help", "pas", "exit", "clear"];
 let pointer = "-> ";
+const RANDOM = {
+  lowerCase: "abcdefghijklmnopqrstuvwxyz",
+  upperCase: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+  number: "0123456789",
+};
 
 //#region READLINE
 
@@ -188,6 +193,15 @@ function decrypt(encrypted, password) {
   } catch {
     return "Wrong password";
   }
+}
+
+async function sha256(message) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(message);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return hashHex; // длина 64 символа
 }
 
 //#region COMMANDS
@@ -453,6 +467,63 @@ CM.add({
 });
 
 CM.add({
+  name: "chash",
+  description: {
+    main: "Create random hash",
+    params: [["?length", "hash length, default is 64"]],
+    args: [],
+  },
+  callback: async (params) => {
+    const hashLength = Number(params[0]);
+
+    if (params[0]) {
+      if (!hashLength) {
+        return console.log(FgRed + "Wrong length" + Reset);
+      }
+
+      if (isNaN(hashLength)) {
+        return console.log(FgRed + "Length is not a number" + Reset);
+      }
+
+      if (hashLength > 256) {
+        return console.log(FgRed + "Length must be less than 256" + Reset);
+      }
+
+      if (hashLength < 0) {
+        return console.log(FgRed + "Length must be greater than 0" + Reset);
+      }
+    }
+
+    const generate64 = async () => {
+      let randomSeed = "";
+      const randomDict = Object.entries(RANDOM);
+
+      for (let i = 0; i < 256; i++) {
+        const selector = crypto.randomInt(3);
+        const buf = randomDict[selector][1];
+        randomSeed += buf[crypto.randomInt(buf.length)];
+      }
+
+      const randomHash = encrypt(randomSeed, password);
+      return await sha256(randomHash);
+    };
+
+    if (hashLength) {
+      const repeat = Math.ceil(hashLength / 64);
+      let hash = "";
+
+      for (let i = repeat; i > 0; i--) {
+        hash += await generate64();
+      }
+
+      console.log(hash.slice(0, hashLength));
+    } else {
+      console.log(await generate64());
+    }
+  },
+});
+
+CM.add({
   name: "clear",
   description: {
     main: "Clear console",
@@ -460,6 +531,7 @@ CM.add({
     args: [],
   },
   callback: () => {
+    process.stdout.write("\x1Bc");
     console.clear();
     initMessage();
   },
