@@ -77,6 +77,7 @@ class CommandsManager {
         if (!paramsCheck(command, params)) return result();
 
         const flags = params.filter((param) => param.startsWith("-"));
+        params = params.filter((param) => !param.startsWith("-"));
 
         await command.run(params, flags);
       } else {
@@ -202,6 +203,12 @@ async function sha256(message) {
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
   return hashHex; // длина 64 символа
+}
+
+function colorfulOutput(string) {
+  return string
+    .replace(/(=)/g, `${FgRed}$1${Reset}`)
+    .replace(/(https?:\/\/)/g, `${FgBlue}$1${Reset}`);
 }
 
 //#region COMMANDS
@@ -436,7 +443,10 @@ CM.add({
   description: {
     main: "Show key list",
     params: [["?search", "KEY name"]],
-    args: [["-e", "encrypts value"]],
+    args: [
+      ["-e", "decrypts data"],
+      ["-c", "colorful decrypted data"],
+    ],
   },
   callback: (params, flags) => {
     const keys = Object.keys(data);
@@ -446,13 +456,29 @@ CM.add({
       const filteredKeys = keys.filter((key) => key.toLowerCase().includes(params[0]));
 
       if (flags.includes("-e")) {
-        result = filteredKeys.map((key) => `${key}: ${decrypt(data[key], password)}`).join("\n");
+        if (flags.includes("-c")) {
+          result = filteredKeys
+            .map(
+              (key) => `${FgGreen}${key}:${Reset} ${colorfulOutput(decrypt(data[key], password))}`
+            )
+            .join("\n");
+        } else {
+          result = filteredKeys.map((key) => `${key}: ${decrypt(data[key], password)}`).join("\n");
+        }
       } else {
         result = filteredKeys.join("\n");
       }
     } else {
       if (flags.includes("-e")) {
-        result = keys.map((key) => `${key}: ${decrypt(data[key], password)}\n`).join("\n");
+        if (flags.includes("-c")) {
+          result = keys
+            .map(
+              (key) => `${FgGreen}${key}:${Reset} ${colorfulOutput(decrypt(data[key], password))}`
+            )
+            .join("\n");
+        } else {
+          result = keys.map((key) => `${key}: ${decrypt(data[key], password)}`).join("\n");
+        }
       } else {
         result = keys.join("\n");
       }
@@ -548,6 +574,8 @@ CM.add({
     process.exit(1);
   },
 });
+
+//#region LOOP
 
 const loop = () => {
   readline.question(FgCyan + pointer + Reset, (input) => {
