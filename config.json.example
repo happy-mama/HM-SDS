@@ -1,0 +1,6 @@
+{
+  "_syncPath_comment": "used in 'syncr' and 'syncs' commands, specify the full path!",
+  "syncPath": "C:\\Users\\someCoolUser\\iCloudDrive\\Documents\\super_file.txt",
+  "_autoSync_comment": "will attempt to 'syncs' on any edit to data.txt, and 'syncr' on successful 'pas'",
+  "autoSync": true
+}

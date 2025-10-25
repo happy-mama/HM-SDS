@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const fs = require("fs");
+const CONFIG = require("./config.json");
 
 //  ___      ___     ____        ___
 // /\  \    /\  \   /\   '.     /   \
@@ -32,7 +33,7 @@ const FgGray = "\x1b[90m";
 
 let password = "";
 let data = {};
-const NO_PASSWORD_REQUIRED_COMMANDS = ["help", "pas", "exit", "clear"];
+const NO_PASSWORD_REQUIRED_COMMANDS = ["help", "pas", "syncr", "syncs", "exit", "clear"];
 let pointer = "-> ";
 const RANDOM = {
   lowerCase: "abcdefghijklmnopqrstuvwxyz",
@@ -105,7 +106,7 @@ class Command {
    * @param {string} params
    * @param {string[]} flags
    */
-  run = (params, flags) => {};
+  run = async (params, flags) => {};
 
   constructor(name, description, callback) {
     this.name = name;
@@ -158,6 +159,10 @@ const paramsCheck = (command, params) => {
 
 const saveData = () => {
   fs.writeFileSync(__dirname + "/data.txt", encrypt(JSON.stringify(data, {}, 2), password));
+
+  if (CONFIG.autoSync) {
+    CM.commands.syncs.run();
+  }
 };
 
 const getDirData = () => {
@@ -257,7 +262,7 @@ CM.add({
     params: [],
     args: [],
   },
-  callback: (params) => {
+  callback: async (params) => {
     return new Promise((resolve) => {
       readline.question(FgMagenta + pointer, (pass) => {
         readline.output.write = originalWrite;
@@ -266,13 +271,17 @@ CM.add({
 
         fs.promises
           .readFile("data.txt", { encoding: "utf-8" })
-          .then((file) => {
+          .then(async (file) => {
             if (file.length) {
               const tempData = decrypt(file, pass);
 
               if (tempData == "Wrong password") {
                 console.log(FgRed + tempData + Reset);
                 return resolve();
+              }
+
+              if (CONFIG.autoSync) {
+                await CM.commands.syncr.run();
               }
 
               data = JSON.parse(tempData);
@@ -546,6 +555,44 @@ CM.add({
     } else {
       console.log(await generate64());
     }
+  },
+});
+
+CM.add({
+  name: "syncr",
+  description: {
+    main: "Sync read data from specified location",
+    params: [],
+    args: [],
+  },
+  callback: async () => {
+    if (!CONFIG.syncPath) {
+      console.log(FgRed + "syncPath not specified" + Reset);
+      return;
+    }
+
+    await fs.promises
+      .copyFile(CONFIG.syncPath, "./data.txt")
+      .catch(() => console.log(FgRed + "Sync error" + Reset));
+  },
+});
+
+CM.add({
+  name: "syncs",
+  description: {
+    main: "Sync save data to specified location",
+    params: [],
+    args: [],
+  },
+  callback: async () => {
+    if (!CONFIG.syncPath) {
+      console.log(FgRed + "syncPath not specified" + Reset);
+      return;
+    }
+
+    await fs.promises
+      .copyFile("./data.txt", CONFIG.syncPath)
+      .catch(() => console.log(FgRed + "Sync error" + Reset));
   },
 });
 
