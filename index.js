@@ -264,24 +264,24 @@ CM.add({
   },
   callback: async (params) => {
     return new Promise((resolve) => {
-      readline.question(FgMagenta + pointer, (pass) => {
+      readline.question(FgMagenta + pointer, async (pass) => {
         readline.output.write = originalWrite;
 
         readline.history.shift();
 
+        if (CONFIG.autoSync) {
+          await CM.commands.syncr.run();
+        }
+
         fs.promises
           .readFile("data.txt", { encoding: "utf-8" })
-          .then(async (file) => {
+          .then((file) => {
             if (file.length) {
               const tempData = decrypt(file, pass);
 
               if (tempData == "Wrong password") {
                 console.log(FgRed + tempData + Reset);
                 return resolve();
-              }
-
-              if (CONFIG.autoSync) {
-                await CM.commands.syncr.run();
               }
 
               data = JSON.parse(tempData);

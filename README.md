@@ -1,21 +1,17 @@
 # HM-SDS
 
-Stores JSON in encrypted txt file.
+Simple Node.JS CLI for locally storing any string data, such as passwords.
 
-Saves data on any edit command.
+The data is stored in `./data.txt` as a string, which is actually a simple json, and is encrypted with a password using `aes-256-cbc`.
 
-Type "help" to see how to use the commands.
+Supports automatic sync via other sync software like iCloud, just enable it in the configuration.
 
-## now with autoSync
+> No dependencies, one js file, completely local.
 
-Specify the file path in config for the sync folder, such as iCloud. There's no need to move the data.txt file - it will be copied automatically if needed.
+## example
 
-# example
+<img src="./example.png" />
 
-- pas
-- `enter password`
-- enc test `any data, for example, some funny lines`
-- dec test
-- => logs string above
+## help
 
-<img src="https://github.com/happy-mama/HM-SDS/blob/main/image.png?raw=true" />
+<img src="./help.png" />
