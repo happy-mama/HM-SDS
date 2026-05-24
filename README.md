@@ -2,7 +2,7 @@
 
 Simple Node.JS CLI for locally storing any string data, such as passwords.
 
-The data is stored in `./data.txt` as a string, which is actually a simple json, and is encrypted with a password using `aes-256-cbc`.
+The data is stored in `./data.txt` as a string, which is actually a simple json, and is encrypted with a password using `aes-256-cbc`. Key is derived from password using `scrypt (N=16384)` to resist brute-force attacks.
 
 Supports automatic sync via other sync software like iCloud, just enable it in the configuration.
 
