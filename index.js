@@ -94,6 +94,7 @@ class CommandsManager {
 				}
 			} else {
 				console.log("No command");
+				result();
 			}
 		});
 	}
