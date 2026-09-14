@@ -429,7 +429,7 @@ CM.add({
 		const key = params[0];
 
 		if (!data[key]) {
-			return console.log(FgRed + "No such key in data.json" + Reset);
+			return console.log(FgRed + `No such key in ${DATA_FILE_NAME}` + Reset);
 		}
 
 		console.log(decrypt(data[key], password));
@@ -506,13 +506,38 @@ CM.add({
 		const key = params[0];
 
 		if (!data[key]) {
-			return console.log(FgRed + "No such key in data.json" + Reset);
+			return console.log(FgRed + `No such key in ${DATA_FILE_NAME}` + Reset);
 		}
 
 		delete data[key];
 		saveData();
 
 		console.log(FgGreen + "Success" + Reset);
+	},
+});
+
+CM.add({
+	name: "ap",
+	description: {
+		main: "Append value to KEY",
+		params: [
+			["key", "KEY of value"],
+			["data+", "any value"],
+		],
+		args: [],
+	},
+	callback: (params) => {
+		const key = params[0];
+
+		if (!data[key]) {
+			return console.log(FgRed + `No such key in ${DATA_FILE_NAME}` + Reset);
+		}
+
+		const message = params.slice(1).join(" ").replaceAll("\\n", "\n");
+
+		const value = decrypt(data[key], password);
+
+		CM.commands.enc.run([key, `${value} ${message}`]);
 	},
 });
 
