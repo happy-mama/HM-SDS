@@ -248,10 +248,21 @@ async function sha256(message) {
 	return hashHex;
 }
 
-function colorfulOutput(string) {
-	return string
-		.replace(/(=)/g, `${FgRed}$1${Reset}`)
-		.replace(/(https?:\/\/)/g, `${FgBlue}$1${Reset}`);
+function fileHash(path) {
+	try {
+		return crypto
+			.createHash("sha256")
+			.update(fs.readFileSync(path, "utf-8"))
+			.digest("hex");
+	} catch {
+		return null;
+	}
+}
+
+function filesEqual(pathA, pathB) {
+	const hashA = fileHash(pathA);
+	const hashB = fileHash(pathB);
+	return hashA !== null && hashA === hashB;
 }
 
 //#region COMMANDS
@@ -393,7 +404,7 @@ CM.add({
 CM.add({
 	name: "enct",
 	description: {
-		main: 'works like "enc" but with template',
+		main: `Encrypts any value to "${DATA_FILE_NAME}" with template`,
 		params: [
 			["key", "KEY of value"],
 			["login", "any value"],
@@ -546,10 +557,7 @@ CM.add({
 	description: {
 		main: "Show key list",
 		params: [["?search", "KEY name"]],
-		args: [
-			["-e", "decrypts data"],
-			["-c", "colorful decrypted data"],
-		],
+		args: [["-e", "decrypts data"]],
 	},
 	callback: (params, flags) => {
 		const keys = Object.keys(data);
@@ -561,35 +569,17 @@ CM.add({
 			);
 
 			if (flags.includes("-e")) {
-				if (flags.includes("-c")) {
-					result = filteredKeys
-						.map(
-							(key) =>
-								`${FgGreen}${key}:${Reset} ${colorfulOutput(decrypt(data[key], password))}`,
-						)
-						.join("\n");
-				} else {
-					result = filteredKeys
-						.map((key) => `${key}: ${decrypt(data[key], password)}`)
-						.join("\n");
-				}
+				result = filteredKeys
+					.map((key) => `${key}: ${decrypt(data[key], password)}`)
+					.join("\n");
 			} else {
 				result = filteredKeys.join("\n");
 			}
 		} else {
 			if (flags.includes("-e")) {
-				if (flags.includes("-c")) {
-					result = keys
-						.map(
-							(key) =>
-								`${FgGreen}${key}:${Reset} ${colorfulOutput(decrypt(data[key], password))}`,
-						)
-						.join("\n");
-				} else {
-					result = keys
-						.map((key) => `${key}: ${decrypt(data[key], password)}`)
-						.join("\n");
-				}
+				result = keys
+					.map((key) => `${key}: ${decrypt(data[key], password)}`)
+					.join("\n");
 			} else {
 				result = keys.join("\n");
 			}
@@ -673,6 +663,10 @@ CM.add({
 			return;
 		}
 
+		if (filesEqual(CONFIG.syncPath, DATA_FILE_NAME)) {
+			return;
+		}
+
 		await fs.promises.copyFile(CONFIG.syncPath, DATA_FILE_NAME).catch(() => {
 			console.log(FgRed + "Sync error" + Reset);
 			return;
@@ -700,7 +694,7 @@ CM.add({
 CM.add({
 	name: "syncs",
 	description: {
-		main: "Sync save data to specified location",
+		main: "Sync write data to specified location",
 		params: [],
 		args: [],
 	},
