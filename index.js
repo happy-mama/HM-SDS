@@ -93,7 +93,9 @@ class CommandsManager {
 					result(res);
 				}
 			} else {
-				console.log("No command");
+				console.log(
+					FgRed + `Unknown command "${name}". Type "help" for a list.` + Reset,
+				);
 				result();
 			}
 		});
@@ -131,7 +133,7 @@ const initMessage = () => {
 	console.log(
 		Bright +
 			FgYellow +
-			'HM-SDS tool. Type "help" to get avaliable commands' +
+			'HM-SDS tool. Type "help" to see available commands.' +
 			Reset,
 	);
 };
@@ -139,7 +141,9 @@ const initMessage = () => {
 const passCheck = () => {
 	if (!password) {
 		console.log(
-			FgRed + 'Enter password before performing operation, type "pas"' + Reset,
+			FgRed +
+				'A password is required for this command. Type "pas" to set it.' +
+				Reset,
 		);
 		return false;
 	}
@@ -162,10 +166,10 @@ const paramsCheck = (command, params) => {
 
 		console.log(
 			FgRed +
-				"missing param" +
+				"Missing required parameter" +
 				Reset +
 				FgCyan +
-				` <${missingParam[0]}> ` +
+				` <${missingParam[0].replace(/^\?/, "")}> ` +
 				Reset +
 				`${missingParam[1]}`,
 		);
@@ -280,6 +284,33 @@ CM.add({
 		let result = "";
 		const keys = Object.keys(CM.commands);
 
+		const legend =
+			Bright +
+			"Legend:\n" +
+			Reset +
+			FgGreen +
+			"  command" +
+			Reset +
+			"           — command name\n" +
+			FgCyan +
+			"  <param>" +
+			Reset +
+			"           — required parameter\n" +
+			FgCyan +
+			"  <?param>" +
+			Reset +
+			'          — optional parameter (the "?" is not typed)\n' +
+			FgCyan +
+			"  <param+>" +
+			Reset +
+			"          — takes the rest of the line as one value\n" +
+			FgMagenta +
+			"  -flag" +
+			Reset +
+			"             — optional flag, e.g. list -e\n";
+
+		result += legend + "\n";
+
 		keys.forEach((key, i) => {
 			const command = CM.commands[key];
 
@@ -320,17 +351,16 @@ CM.add({
 			if (password) {
 				console.log(
 					FgYellow +
-						`Already typed :/` +
+						`A password is already set for this session.` +
 						Reset +
-						`\nTo set another password, follow this:
+						`\nTo change it, do the following:
 1. turn off autosync if you have it enabled
-2. backup "${DATA_FILE_NAME}"
-3. execute "decall" command
+2. back up "${DATA_FILE_NAME}"
+3. run "decall"
 4. delete "${DATA_FILE_NAME}"
-5. restart cli
-6. execute "pas" command and type new password
-7. execute "encall" command
-Profffffit`,
+5. restart the CLI
+6. run "pas" and type the new password
+7. run "encall"`,
 				);
 				return resolve();
 			}
@@ -382,9 +412,9 @@ Profffffit`,
 CM.add({
 	name: "enc",
 	description: {
-		main: `Encrypts any value to "${DATA_FILE_NAME}"`,
+		main: `Encrypt a value into "${DATA_FILE_NAME}"`,
 		params: [
-			["key", "KEY of value"],
+			["key", "key of the value"],
 			["data+", "any value"],
 		],
 		args: [],
@@ -404,9 +434,9 @@ CM.add({
 CM.add({
 	name: "enct",
 	description: {
-		main: `Encrypts any value to "${DATA_FILE_NAME}" with template`,
+		main: `Encrypt a value into "${DATA_FILE_NAME}" using a login/password template`,
 		params: [
-			["key", "KEY of value"],
+			["key", "key of the value"],
 			["login", "any value"],
 			["pas", "any value"],
 			["?info+", "any value"],
@@ -432,8 +462,8 @@ CM.add({
 CM.add({
 	name: "dec",
 	description: {
-		main: `Decrypts key from "${DATA_FILE_NAME}"`,
-		params: [["key", "KEY of value"]],
+		main: `Decrypt a key from "${DATA_FILE_NAME}"`,
+		params: [["key", "key of the value"]],
 		args: [],
 	},
 	callback: (params) => {
@@ -468,7 +498,7 @@ CM.add({
 
 		console.log(
 			FgGreen +
-				`Succesfuly decrypted all data to "${RAW_DATA_FILE_NAME}"` +
+				`Successfully decrypted all data to "${RAW_DATA_FILE_NAME}"` +
 				Reset,
 		);
 	},
@@ -477,9 +507,9 @@ CM.add({
 CM.add({
 	name: "encall",
 	description: {
-		main: `Encrypt all data from "${RAW_DATA_FILE_NAME}" to "${DATA_FILE_NAME}"`,
+		main: `Encrypt all data from "${RAW_DATA_FILE_NAME}" into "${DATA_FILE_NAME}"`,
 		params: [],
-		args: [["-s", `Will not delete "${RAW_DATA_FILE_NAME}"`]],
+		args: [["-s", `keep "${RAW_DATA_FILE_NAME}" instead of deleting it`]],
 	},
 	callback: (_, flags) => {
 		const dirData = getDirData();
@@ -502,15 +532,15 @@ CM.add({
 
 		saveData();
 
-		console.log(FgGreen + "Succesfuly encrypted all data" + Reset);
+		console.log(FgGreen + "Successfully encrypted all data" + Reset);
 	},
 });
 
 CM.add({
 	name: "del",
 	description: {
-		main: "Delete key and value",
-		params: [["key", "KEY of value"]],
+		main: "Delete a key and its value",
+		params: [["key", "key of the value"]],
 		args: [],
 	},
 	callback: (params) => {
@@ -530,9 +560,9 @@ CM.add({
 CM.add({
 	name: "ap",
 	description: {
-		main: "Append value to KEY",
+		main: "Append a value to an existing key",
 		params: [
-			["key", "KEY of value"],
+			["key", "key of the value"],
 			["data+", "any value"],
 		],
 		args: [],
@@ -555,9 +585,9 @@ CM.add({
 CM.add({
 	name: "list",
 	description: {
-		main: "Show key list",
-		params: [["?search", "KEY name"]],
-		args: [["-e", "decrypts data"]],
+		main: "Show the list of keys",
+		params: [["?search", "key name"]],
+		args: [["-e", "also decrypt and show values"]],
 	},
 	callback: (params, flags) => {
 		const keys = Object.keys(data);
@@ -596,24 +626,20 @@ CM.add({
 CM.add({
 	name: "chash",
 	description: {
-		main: "Create random hash",
-		params: [["?length", "hash length, default is 64"]],
+		main: "Generate a random hash",
+		params: [["?length", "hash length, default is 64, max is 256"]],
 		args: [],
 	},
 	callback: async (params) => {
 		const hashLength = Number(params[0]);
 
 		if (params[0]) {
-			if (!hashLength) {
-				return console.log(FgRed + "Wrong length" + Reset);
-			}
-
-			if (isNaN(hashLength)) {
-				return console.log(FgRed + "Length is not a number" + Reset);
+			if (isNaN(hashLength) || !hashLength) {
+				return console.log(FgRed + "Length must be a positive number" + Reset);
 			}
 
 			if (hashLength > 256) {
-				return console.log(FgRed + "Length must be less than 256" + Reset);
+				return console.log(FgRed + "Length must not exceed 256" + Reset);
 			}
 
 			if (hashLength < 0) {
@@ -653,13 +679,13 @@ CM.add({
 CM.add({
 	name: "syncr",
 	description: {
-		main: "Sync read data from specified location",
+		main: "Pull (read) data from the configured sync location",
 		params: [],
 		args: [],
 	},
 	callback: async () => {
 		if (!CONFIG.syncPath) {
-			console.log(FgRed + "syncPath not specified" + Reset);
+			console.log(FgRed + "syncPath is not set in config.json" + Reset);
 			return;
 		}
 
@@ -694,13 +720,13 @@ CM.add({
 CM.add({
 	name: "syncs",
 	description: {
-		main: "Sync write data to specified location",
+		main: "Push (write) data to the configured sync location",
 		params: [],
 		args: [],
 	},
 	callback: async () => {
 		if (!CONFIG.syncPath) {
-			console.log(FgRed + "syncPath not specified" + Reset);
+			console.log(FgRed + "syncPath is not set in config.json" + Reset);
 			return;
 		}
 
@@ -713,7 +739,7 @@ CM.add({
 CM.add({
 	name: "clear",
 	description: {
-		main: "Clear console",
+		main: "Clear the console",
 		params: [],
 		args: [],
 	},
@@ -727,7 +753,7 @@ CM.add({
 CM.add({
 	name: "exit",
 	description: {
-		main: "Exit programm",
+		main: "Exit the program",
 		params: [],
 		args: [],
 	},
