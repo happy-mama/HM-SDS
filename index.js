@@ -772,6 +772,10 @@ CM.add({
 		args: [],
 	},
 	callback: () => {
+		if (fs.existsSync(__dirname + "/" + RAW_DATA_FILE_NAME)) {
+			fs.rmSync(__dirname + "/" + RAW_DATA_FILE_NAME);
+		}
+
 		process.exit(0);
 	},
 });
@@ -782,6 +786,22 @@ if (CONFIG.clear) {
 	CM.commands.clear.run();
 } else {
 	initMessage();
+}
+
+if (fs.existsSync(__dirname + "/" + RAW_DATA_FILE_NAME)) {
+	if (CONFIG.security.deleteRawAllFileOnStart) {
+		fs.rmSync(__dirname + "/" + RAW_DATA_FILE_NAME);
+
+		console.log(
+			FgRed + `DELETED ${RAW_DATA_FILE_NAME} due to configuration` + Reset,
+		);
+	} else {
+		console.log(
+			FgRed +
+				`${RAW_DATA_FILE_NAME} still exists in CLI root. Don't leave it decrypted longer than necessary!\nEnable auto-delete in config to fix this automatically.` +
+				Reset,
+		);
+	}
 }
 
 if (CONFIG.sessionTimeout.enabled) {
@@ -823,3 +843,8 @@ const loop = () => {
 };
 
 loop();
+
+if (CONFIG.security.deleteRawAllFileOnExit) {
+	process.on("exit", CM.commands.exit.run);
+	process.on("SIGINT", CM.commands.exit.run);
+}
