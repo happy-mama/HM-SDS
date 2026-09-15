@@ -30,6 +30,7 @@ const FgCyan = "\x1b[36m";
 
 let password = "";
 let data = {};
+let lastInteractionTime = Date.now();
 const DATA_FILE_NAME = "data.txt";
 const RAW_DATA_FILE_NAME = "rawAll.json";
 const NO_PASSWORD_REQUIRED_COMMANDS = [
@@ -74,6 +75,8 @@ class CommandsManager {
 	 */
 	invoke(name, params) {
 		return new Promise((result) => {
+			lastInteractionTime = Date.now();
+
 			const command = this.commands[name];
 
 			if (command) {
@@ -267,6 +270,17 @@ function filesEqual(pathA, pathB) {
 	const hashA = fileHash(pathA);
 	const hashB = fileHash(pathB);
 	return hashA !== null && hashA === hashB;
+}
+
+function parseTime(str) {
+	const match = /^(\d+)(s|m|h)$/.exec(str);
+	if (!match) return null;
+
+	const value = Number(match[1]);
+	const unit = match[2];
+
+	const multipliers = { s: 1000, m: 60 * 1000, h: 60 * 60 * 1000 };
+	return value * multipliers[unit];
 }
 
 //#region COMMANDS
@@ -762,7 +776,37 @@ CM.add({
 	},
 });
 
-//#region LOOP
+//#region run
+
+if (CONFIG.clear) {
+	CM.commands.clear.run();
+} else {
+	initMessage();
+}
+
+if (CONFIG.sessionTimeout.enabled) {
+	const limit = parseTime(CONFIG.sessionTimeout.time);
+
+	if (!limit) {
+		console.log(
+			FgRed +
+				"Session timeout time in config is invalid, this feature will not work!" +
+				Reset,
+		);
+	} else {
+		setInterval(() => {
+			if (Date.now() - lastInteractionTime > limit) {
+				if (CONFIG.sessionTimeout.clear) {
+					CM.commands.clear.run();
+				}
+
+				console.log(FgYellow + "Session timeout" + Reset);
+
+				CM.commands.exit.run();
+			}
+		}, 1000);
+	}
+}
 
 const loop = () => {
 	readline.question(FgCyan + pointer + Reset, (input) => {
@@ -778,6 +822,4 @@ const loop = () => {
 	});
 };
 
-console.clear();
-initMessage();
 loop();

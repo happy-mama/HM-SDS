@@ -1,6 +1,16 @@
 {
   "_syncPath_comment": "used in 'syncr' and 'syncs' commands, specify the full path!",
-  "syncPath": "C:\\Users\\someCoolUser\\iCloudDrive\\Documents\\hm_sds.txt",
+  "syncPath": "C:\\Users\\someCoolUser\\iCloudDrive\\Documents\\hm-sds.txt",
   "_autoSync_comment": "will attempt to 'syncs' on any edit to data.txt, and 'syncr' on successful 'pas'",
-  "autoSync": false
+  "autoSync": false,
+  "_clear_comment": "clear console on CLI start",
+  "clear": false,
+  "sessionTimeout": {
+    "_comment": "terminates session on idle (closes CLI)",
+    "enabled": true,
+    "_time_comment": "time to terminate session on idle (format: <number><s/m/h>, 10s = 10 seconds, 5m = 5 minutes)",
+    "time": "5m",
+    "_clear_comment": "clear console on session timeout",
+    "clear": true
+  }
 }
